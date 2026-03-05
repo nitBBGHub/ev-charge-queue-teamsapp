@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+<!-- Teams iframe compatibility: allow embedding from any Teams origin -->
+<meta http-equiv="Content-Security-Policy" content="frame-ancestors 'self' https://teams.microsoft.com https://*.teams.microsoft.com https://*.skype.com https://*.office.com https://*.sharepoint.com"/>
+<title>EV Charge Queue</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#07101d;color:#e2e8f0;font-family:'DM Sans','Segoe UI',sans-serif;min-height:100vh}
+#app{max-width:680px;margin:0 auto;padding-bottom:60px}
+
+/* ── Header ── */
+.header{display:flex;justify-content:space-between;align-items:center;padding:18px 18px 12px}
+.bolt-badge{width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#22d3ee,#0ea5e9);display:flex;align-items:center;justify-content:center;box-shadow:0 0 20px #22d3ee44;flex-shrink:0}
+.title-text{font-family:monospace;font-size:13px;font-weight:700;letter-spacing:3px;color:#94a3b8;text-transform:uppercase}
+.date-text{font-size:22px;font-weight:700;color:#f1f5f9;margin-top:2px;letter-spacing:-0.3px;line-height:1.2}
+.date-day{color:#22d3ee}
+.saving-dot{color:#22d3ee;font-size:9px;letter-spacing:2px;font-family:monospace;animation:blink 1s infinite}
+
+/* ── Admin ── */
+.admin-box{margin:0 16px 10px;background:#0b1a2e;border:1px solid #1e3a5f;border-radius:12px;padding:12px 16px}
+.admin-label{font-family:monospace;font-size:10px;letter-spacing:3px;color:#334155;margin-bottom:10px;text-transform:uppercase}
+.admin-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* ── Summary bar ── */
+.summary-bar{display:flex;align-items:center;justify-content:center;margin:4px 16px 0;background:#0b1a2e;border:1px solid #1e3a5f;border-radius:14px;padding:12px 24px}
+.summary-item{display:flex;flex-direction:column;align-items:center;flex:1}
+.summary-num{font-family:monospace;font-size:32px;font-weight:800;line-height:1}
+.summary-lbl{font-size:10px;color:#475569;letter-spacing:1px;margin-top:3px;text-transform:uppercase;font-family:monospace}
+.summary-div{width:1px;height:40px;background:#1e3a5f;margin:0 8px}
+
+/* ── Join card ── */
+.join-card{margin:10px 16px 0;background:#0b1a2e;border:1px solid #1e3a5f;border-radius:14px;padding:14px 16px}
+.join-label{display:flex;align-items:center;gap:6px;font-size:11px;color:#475569;margin-bottom:10px;font-family:monospace}
+.join-row{display:flex;gap:8px}
+.error-msg{margin-top:8px;font-size:12px;color:#f87171;font-family:monospace}
+.hint-text{margin-top:8px;font-size:11px;color:#334155;line-height:1.5}
+
+/* ── Section ── */
+.section{margin:16px 16px 0}
+.sec-header{display:flex;align-items:center;gap:7px;font-family:monospace;font-size:10px;letter-spacing:2px;color:#475569;text-transform:uppercase;margin-bottom:10px}
+.sec-count{margin-left:auto;font-size:10px;color:#22d3ee;font-family:monospace}
+
+/* ── Charger row ── */
+.charger-row{display:flex;flex-direction:row;gap:10px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.charger-row::-webkit-scrollbar{display:none}
+
+.charger-card{border-radius:14px;padding:12px 12px 10px;border:1px solid;transition:all 0.3s;min-width:130px;max-width:150px;flex:0 0 140px;display:flex;flex-direction:column;scroll-snap-align:start}
+.charger-free{background:#080f1a;border-color:#152535}
+.charger-occupied{background:#091a2a;border-color:#1a4060}
+.charger-flash{box-shadow:0 0 20px #22d3ee55;border-color:#22d3ee}
+
+.graphic-wrap{display:flex;justify-content:center;margin-bottom:6px}
+.charger-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.charger-title{font-size:11px;font-weight:700;color:#94a3b8;font-family:monospace;letter-spacing:0.5px}
+.status-pill{font-size:8px;font-weight:800;letter-spacing:1px;font-family:monospace;border-radius:20px;padding:2px 7px}
+.pill-free{background:#0b2a14;color:#4ade80;border:1px solid #166534}
+.pill-busy{background:#0b2a40;color:#22d3ee;border:1px solid #1e4a6a}
+
+.free-body{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;justify-content:flex-end}
+.free-text{font-size:10px;color:#334155;font-style:italic}
+.occupied-body{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;justify-content:flex-end}
+.occupant-name{font-weight:700;font-size:12px;color:#f1f5f9;text-align:center;word-break:break-word}
+.occupant-meta{font-size:10px;color:#475569;text-align:center}
+
+/* ── Avatar ── */
+.avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#0a0f1e;flex-shrink:0}
+
+/* ── Queue cards ── */
+.queue-card{background:#0d0b00;border:1px solid #2a2000;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.queue-pos{font-family:monospace;font-size:13px;color:#fbbf24;font-weight:800;width:26px;flex-shrink:0}
+.queue-name{font-weight:600;font-size:14px;color:#f1f5f9}
+.queue-meta{font-size:11px;color:#475569;margin-top:2px}
+.waiting-tag{color:#78350f}
+.empty-queue{font-size:12px;color:#1e293b;font-style:italic;padding:10px 0}
+
+/* ── Buttons ── */
+.icon-btn{background:#111e30;border:1px solid #1e3a5f;color:#64748b;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:15px;transition:color 0.15s}
+.icon-btn:hover{color:#e2e8f0}
+.slim-input{background:#07101d;border:1px solid #1e3a5f;color:#e2e8f0;border-radius:8px;padding:6px 10px;font-size:13px;font-family:monospace;outline:none;width:60px}
+.slim-input:focus{border-color:#22d3ee}
+.name-input{flex:1;background:#07101d;border:1px solid #1e3a5f;color:#e2e8f0;border-radius:10px;padding:10px 14px;font-size:15px;outline:none;font-family:inherit;transition:border-color 0.15s}
+.name-input:focus{border-color:#22d3ee;box-shadow:0 0 0 3px #22d3ee15}
+.btn-queue{background:#1e3a5f;color:#94a3b8;border:1px solid #2a5080;border-radius:10px;padding:10px 16px;font-weight:600;cursor:pointer;font-size:13px;white-space:nowrap;transition:all 0.15s}
+.btn-queue:hover{background:#2a4a70;color:#e2e8f0}
+.btn-start-slot{background:linear-gradient(90deg,#22d3ee22,#0ea5e922);color:#22d3ee;border:1px solid #22d3ee44;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;transition:all 0.15s;width:100%;text-align:center}
+.btn-start-slot:hover{background:linear-gradient(90deg,#22d3ee44,#0ea5e944);border-color:#22d3ee88;box-shadow:0 0 10px #22d3ee33}
+.btn-done-slot{background:#4ade8022;color:#4ade80;border:1px solid #166534;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background 0.15s;width:100%;text-align:center}
+.btn-done-slot:hover{background:#4ade8040}
+.btn-start-queue{background:#fbbf2420;color:#fbbf24;border:1px solid #78350f;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background 0.15s;flex-shrink:0}
+.btn-start-queue:not(:disabled):hover{background:#fbbf2440}
+.btn-start-queue:disabled{opacity:0.35;cursor:not-allowed}
+.btn-x{background:transparent;color:#334155;border:none;cursor:pointer;font-size:13px;padding:4px 6px;border-radius:6px;flex-shrink:0;transition:color 0.15s}
+.btn-x:hover{color:#f87171}
+.btn-cyan{background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px}
+.btn-red{background:#7f1d1d;color:#fca5a5;border:1px solid #991b1b;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px}
+
+.footer{text-align:center;font-size:10px;color:#1a2a3a;margin-top:32px;letter-spacing:0.5px;font-family:monospace}
+.hidden{display:none}
+
+/* ── Sync banner ── */
+.sync-banner{margin:6px 16px 0;background:#0b1a2e;border:1px solid #1e3a5f;border-radius:10px;padding:8px 12px;font-size:11px;color:#475569;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sync-ok{color:#4ade80}
+.sync-err{color:#f87171}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+@keyframes flash-card{0%,100%{box-shadow:0 0 20px #22d3ee55;border-color:#22d3ee}50%{box-shadow:0 0 35px #22d3eebb;border-color:#22d3ee}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:#22d3ee;font-family:monospace;letter-spacing:4px;font-size:13px" id="loading">LOADING…</div>
+</div>
+
+<script>
+// ─── Config ──────────────────────────────────────────────────────────────────
+// To enable shared sync across all users, set SYNC_URL to a JSONBin bin URL:
+//   1. Go to https://jsonbin.io → create free account → New Bin → paste {}
+//   2. Copy the bin URL and your API key, set them below
+// Leave blank to use localStorage only (works on one device/browser)
+const JSONBIN_URL  = "";   // e.g. "https://api.jsonbin.io/v3/b/YOUR_BIN_ID"
+const JSONBIN_KEY  = "";   // e.g. "your-master-key"
+const POLL_MS      = 8000; // how often to refresh from server
+
+// ─── State ───────────────────────────────────────────────────────────────────
+const STORAGE_KEY = "ev-charge-queue-v3";
+const PALETTE = ["#22d3ee","#a78bfa","#34d399","#f472b6","#fbbf24","#60a5fa","#fb923c","#4ade80","#e879f9","#38bdf8"];
+
+function today() { return new Date().toISOString().split("T")[0]; }
+function timeNow() { return new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}); }
+function dateNow() {
+  const now = new Date();
+  const weekday = now.toLocaleDateString("en-US",{weekday:"long"});
+  const rest = now.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
+  return `<span class="date-day">${weekday}</span>, ${rest}`;
+}
+
+function buildSlots(max, existing={}) {
+  const s={};
+  for(let i=1;i<=max;i++) s[i]=existing[i]??null;
+  return s;
+}
+
+function defaultState() {
+  return { date:today(), maxChargers:4, slots:buildSlots(4), queue:[], nextId:1 };
+}
+
+function parseState(raw) {
+  if(!raw) return defaultState();
+  try {
+    const s = typeof raw==="string" ? JSON.parse(raw) : raw;
+    if(s.date!==today()) return defaultState();
+    s.slots = buildSlots(s.maxChargers||4, s.slots||{});
+    if(!s.queue) s.queue=[];
+    return s;
+  } catch { return defaultState(); }
+}
+
+// ─── Sync layer ──────────────────────────────────────────────────────────────
+let state = defaultState();
+let syncStatus = "local"; // "local" | "ok" | "error"
+
+async function loadRemote() {
+  if(!JSONBIN_URL) return null;
+  try {
+    const r = await fetch(JSONBIN_URL+"/latest",{headers:{"X-Master-Key":JSONBIN_KEY}});
+    if(!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    syncStatus="ok";
+    return j.record;
+  } catch { syncStatus="error"; return null; }
+}
+
+async function saveRemote(s) {
+  if(!JSONBIN_URL) return;
+  try {
+    await fetch(JSONBIN_URL,{
+      method:"PUT",
+      headers:{"Content-Type":"application/json","X-Master-Key":JSONBIN_KEY},
+      body:JSON.stringify(s)
+    });
+    syncStatus="ok";
+  } catch { syncStatus="error"; }
+}
+
+function loadLocal() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; }
+}
+function saveLocal(s) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {}
+}
+
+async function loadState() {
+  const remote = await loadRemote();
+  const local  = loadLocal();
+  const raw    = remote || local;
+  state = parseState(raw);
+  saveLocal(state);
+  render();
+}
+
+async function saveState() {
+  saveLocal(state);
+  await saveRemote(state);
+  render();
+}
+
+// ─── Actions ─────────────────────────────────────────────────────────────────
+function addToQueue(name) {
+  const nl = name.toLowerCase();
+  if(Object.values(state.slots).some(s=>s?.userName?.toLowerCase()===nl))
+    return `"${name}" is already at a charger.`;
+  if(state.queue.some(q=>q.userName.toLowerCase()===nl))
+    return `"${name}" is already in the queue.`;
+  state.queue.push({id:`q${state.nextId++}`,userName:name,joinedAt:timeNow()});
+  saveState();
+  return null;
+}
+
+function startAtSlot(slotNum, name) {
+  const nl = name.toLowerCase();
+  if(state.slots[slotNum]) return `Charger #${slotNum} is occupied.`;
+  if(Object.values(state.slots).some(s=>s?.userName?.toLowerCase()===nl))
+    return `"${name}" is already at a charger.`;
+  if(state.queue.some(q=>q.userName.toLowerCase()===nl))
+    return `"${name}" is in the queue — use ⚡ Start there.`;
+  state.slots[slotNum]={userName:name,startTime:timeNow()};
+  state.nextId++;
+  saveState();
+  flashCard(slotNum);
+  return null;
+}
+
+function startFromQueue(queueId) {
+  const freeSlot = Object.keys(state.slots).find(k=>!state.slots[k]);
+  if(!freeSlot) return;
+  const q = state.queue.find(q=>q.id===queueId);
+  if(!q) return;
+  state.slots[freeSlot]={userName:q.userName,startTime:timeNow()};
+  state.queue = state.queue.filter(x=>x.id!==queueId);
+  state.nextId++;
+  saveState();
+  flashCard(Number(freeSlot));
+}
+
+function markDone(slotNum) {
+  state.slots[slotNum]=null;
+  saveState();
+}
+
+function removeFromQueue(queueId) {
+  state.queue = state.queue.filter(q=>q.id!==queueId);
+  saveState();
+}
+
+function applyMaxChargers(n) {
+  state.maxChargers=n;
+  state.slots=buildSlots(n,state.slots);
+  saveState();
+}
+
+function resetDay() {
+  state=defaultState();
+  saveState();
+}
+
+// ─── Flash animation ─────────────────────────────────────────────────────────
+let flashTimeout={};
+function flashCard(slotNum) {
+  const el=document.getElementById(`charger-card-${slotNum}`);
+  if(!el) return;
+  el.style.animation="flash-card 0.4s ease 2";
+  clearTimeout(flashTimeout[slotNum]);
+  flashTimeout[slotNum]=setTimeout(()=>{ if(el) el.style.animation=""; },900);
+}
+
+// ─── Avatar helper ───────────────────────────────────────────────────────────
+function avatarHTML(name, size=36) {
+  const bg = PALETTE[name.charCodeAt(0) % PALETTE.length];
+  const initials = name.slice(0,2).toUpperCase();
+  return `<div class="avatar" style="width:${size}px;height:${size}px;background:${bg};font-size:${Math.round(size*0.36)}px">${initials}</div>`;
+}
+
+// ─── EV Charger SVG ──────────────────────────────────────────────────────────
+function evChargerSVG(active, uid) {
+  const bodyStop1 = active?"#0e2a3a":"#0b1a2e";
+  const bodyStop2 = active?"#071820":"#070f1a";
+  const scrnStop1 = active?"#0a3a4a":"#0a1a2a";
+  const scrnStop2 = active?"#051e28":"#050d14";
+  const stroke    = active?"#22d3ee":"#1e3a5f";
+  const cableClr  = active?"#22d3ee":"#152535";
+  const plugClr   = active?"#22d3ee":"#152535";
+  const boltFill  = active?"#22d3ee":"#1e3a5f";
+  const led1      = active?"#22d3ee":"#152535";
+  const led2      = active?"#4ade80":"#0f2020";
+  const glow      = active?`filter:drop-shadow(0 0 6px #22d3eeaa)`:"";
+
+  const anims = active ? `
+    @keyframes bp${uid}{0%,100%{opacity:.3;transform:scale(.92)}50%{opacity:1;transform:scale(1.08)}}
+    @keyframes cf${uid}{0%{stroke-dashoffset:24}100%{stroke-dashoffset:0}}
+    @keyframes gw${uid}{0%,100%{opacity:.4}50%{opacity:1}}
+    .ba${uid}{transform-origin:36px 44px;animation:bp${uid} 1.1s ease-in-out infinite}
+    .ca${uid}{stroke-dasharray:4 3;animation:cf${uid} .6s linear infinite}
+    .da${uid}{animation:gw${uid} 1.1s ease-in-out infinite}
+  ` : `
+    .ba${uid}{transform-origin:36px 44px}
+    .ca${uid}{stroke-dasharray:none}
+    .da${uid}{}
+  `;
+
+  const screenContent = active ? `
+    <rect x="22" y="32" width="5" height="4" rx="1" fill="#22d3ee" opacity=".5" class="da${uid}" style="animation-delay:0s"/>
+    <rect x="29" y="28" width="5" height="8" rx="1" fill="#22d3ee" opacity=".75" class="da${uid}" style="animation-delay:.2s"/>
+    <rect x="36" y="24" width="5" height="12" rx="1" fill="#22d3ee" class="da${uid}" style="animation-delay:.4s"/>
+    <rect x="43" y="20" width="5" height="16" rx="1" fill="#22d3ee" opacity=".9" class="da${uid}" style="animation-delay:.15s"/>
+    <text x="36" y="19" text-anchor="middle" font-size="5" fill="#22d3ee88" font-family="monospace">CHG</text>
+  ` : `
+    <text x="36" y="30" text-anchor="middle" font-size="8" fill="#1e3a5f" font-family="monospace" font-weight="700">READY</text>
+    <line x1="23" y1="33" x2="49" y2="33" stroke="#1a3050" stroke-width="1" stroke-dasharray="2 2"/>
+  `;
+
+  return `<svg width="60" height="81" viewBox="0 0 72 97" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;${glow};transition:filter .4s">
+    <defs>
+      <linearGradient id="bg${uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${bodyStop1}"/><stop offset="100%" stop-color="${bodyStop2}"/></linearGradient>
+      <linearGradient id="sg${uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${scrnStop1}"/><stop offset="100%" stop-color="${scrnStop2}"/></linearGradient>
+      <style>${anims}</style>
+    </defs>
+    <rect x="32" y="72" width="8" height="18" rx="3" fill="${bodyStop1}"/>
+    <rect x="20" y="88" width="32" height="6" rx="3" fill="${active?"#1a3a4a":"#152535"}"/>
+    <rect x="10" y="8" width="52" height="66" rx="8" fill="url(#bg${uid})" stroke="${stroke}" stroke-width="1.5"/>
+    <rect x="17" y="14" width="38" height="26" rx="5" fill="url(#sg${uid})" stroke="${active?"#22d3ee55":"#152535"}" stroke-width="1"/>
+    ${screenContent}
+    <rect x="17" y="46" width="38" height="20" rx="4" fill="${active?"#071820":"#060d18"}" stroke="${active?"#22d3ee33":"#111e30"}" stroke-width="1"/>
+    <rect x="27" y="50" width="18" height="12" rx="3" fill="${active?"#0a2a3a":"#0a1625"}" stroke="${stroke}" stroke-width="1.2"/>
+    <g class="ba${uid}"><path d="M38 52.5L33.5 57.5H36.5L35 61.5L40 56H37L38 52.5Z" fill="${boltFill}"/></g>
+    <path d="M36 66 Q36 70 42 72 Q48 74 48 80" stroke="${cableClr}" stroke-width="2.5" stroke-linecap="round" fill="none" class="ca${uid}"/>
+    <circle cx="48" cy="82" r="3.5" fill="${plugClr}" stroke="${active?"#22d3ee88":"#0f2030"}" stroke-width="1"/>
+    <circle cx="52" cy="12" r="2.5" fill="${led1}" class="da${uid}"/>
+    <circle cx="46" cy="12" r="2.5" fill="${led2}" class="da${uid}" style="animation-delay:.5s"/>
+  </svg>`;
+}
+
+// ─── Render ──────────────────────────────────────────────────────────────────
+let adminOpen = false;
+
+function render() {
+  const { slots, queue, maxChargers } = state;
+  const slotNums = Array.from({length:maxChargers},(_,i)=>i+1);
+  const freeCount = slotNums.filter(n=>!slots[n]).length;
+  const hasFree = freeCount>0;
+
+  // Summary colours
+  const freeColor  = hasFree?"#22d3ee":"#f472b6";
+
+  // Sync indicator
+  let syncHTML="";
+  if(JSONBIN_URL) {
+    syncHTML=`<div class="sync-banner">
+      🔗 Shared sync:
+      <span class="${syncStatus==="ok"?"sync-ok":syncStatus==="error"?"sync-err":""}">
+        ${syncStatus==="ok"?"● Connected":syncStatus==="error"?"● Error — check API key":"● Local only"}
+      </span>
+      <span style="margin-left:auto;font-size:10px;color:#1e3a5f">Polls every ${POLL_MS/1000}s</span>
+    </div>`;
+  }
+
+  // Charger cards
+  const chargerCards = slotNums.map(num=>{
+    const occ = slots[num];
+    const isFree = !occ;
+    const uid = `s${num}`;
+    return `
+    <div class="charger-card ${isFree?"charger-free":"charger-occupied"}" id="charger-card-${num}">
+      <div class="graphic-wrap">${evChargerSVG(!isFree, uid)}</div>
+      <div class="charger-header">
+        <span class="charger-title">Charger ${num}</span>
+        <span class="status-pill ${isFree?"pill-free":"pill-busy"}">${isFree?"FREE":"IN USE"}</span>
+      </div>
+      ${isFree ? `
+        <div class="free-body">
+          <div class="free-text">Available</div>
+          <button class="btn-start-slot" onclick="handleStartSlot(${num})">⚡ Start</button>
+        </div>
+      ` : `
+        <div class="occupied-body">
+          ${avatarHTML(occ.userName,28)}
+          <div class="occupant-name">${esc(occ.userName)}</div>
+          <div class="occupant-meta">since ${occ.startTime}</div>
+          <button class="btn-done-slot" onclick="handleDone(${num})">✓ Done</button>
+        </div>
+      `}
+    </div>`;
+  }).join("");
+
+  // Queue cards
+  const queueCards = queue.length===0
+    ? `<div class="empty-queue">No one in the queue</div>`
+    : queue.map((q,i)=>`
+      <div class="queue-card">
+        <div class="queue-pos">#${i+1}</div>
+        ${avatarHTML(q.userName,34)}
+        <div style="flex:1;min-width:0">
+          <div class="queue-name">${esc(q.userName)}</div>
+          <div class="queue-meta">Joined ${q.joinedAt}${!hasFree?`<span class="waiting-tag"> · waiting for slot</span>`:""}</div>
+        </div>
+        <button class="btn-start-queue" ${!hasFree?"disabled":""} onclick="handleStartQueue('${q.id}')"
+          title="${hasFree?"Start at next free charger":"No chargers free yet"}">⚡ Start</button>
+        <button class="btn-x" onclick="handleRemoveQueue('${q.id}')" title="Leave queue">✕</button>
+      </div>`).join("");
+
+  document.getElementById("app").innerHTML = `
+    <!-- Header -->
+    <header class="header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="bolt-badge">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#0a0f1e"><path d="M13 2L4.09 12.97H11L10 22L19.91 11.03H13L13 2Z"/></svg>
+        </div>
+        <div>
+          <div class="title-text">EV CHARGE QUEUE</div>
+          <div class="date-text" id="date-display">${dateNow()}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="saving-indicator" class="saving-dot hidden">SAVING</span>
+        <button class="icon-btn" onclick="toggleAdmin()">⚙</button>
+      </div>
+    </header>
+
+    <!-- Admin panel -->
+    <div class="admin-box ${adminOpen?"":"hidden"}" id="admin-panel">
+      <div class="admin-label">Admin Controls</div>
+      <div class="admin-row">
+        <span style="font-size:13px;color:#94a3b8">Number of chargers:</span>
+        <input class="slim-input" type="number" min="1" max="20" id="max-input" value="${maxChargers}" placeholder="${maxChargers}"/>
+        <button class="btn-cyan" onclick="handleApplyMax()">Update</button>
+        <button class="btn-red" onclick="handleReset()">Reset Day</button>
+      </div>
+    </div>
+
+    ${syncHTML}
+
+    <!-- Summary bar -->
+    <div class="summary-bar">
+      <div class="summary-item">
+        <span class="summary-num" style="color:${freeColor}">${freeCount}</span>
+        <span class="summary-lbl">Free</span>
+      </div>
+      <div class="summary-div"></div>
+      <div class="summary-item">
+        <span class="summary-num" style="color:#a78bfa">${maxChargers-freeCount}</span>
+        <span class="summary-lbl">In Use</span>
+      </div>
+      <div class="summary-div"></div>
+      <div class="summary-item">
+        <span class="summary-num" style="color:#fbbf24">${queue.length}</span>
+        <span class="summary-lbl">Waiting</span>
+      </div>
+    </div>
+
+    <!-- Name input -->
+    <div class="join-card">
+      <div class="join-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="#64748b"><path d="M13 2L4.09 12.97H11L10 22L19.91 11.03H13L13 2Z"/></svg>
+        Enter your name to claim a charger or join the queue
+      </div>
+      <div class="join-row">
+        <input class="name-input" id="name-input" placeholder="Your name…" onkeydown="if(event.key==='Enter')handleAddToQueue()"/>
+        <button class="btn-queue" onclick="handleAddToQueue()">Join Queue</button>
+      </div>
+      <div id="error-msg" class="error-msg hidden"></div>
+      <div class="hint-text">Tip: Type your name, then click <strong>⚡ Start</strong> on a free charger — or <strong>Join Queue</strong> to wait.</div>
+    </div>
+
+    <!-- Charger stations -->
+    <div class="section">
+      <div class="sec-header">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="#22d3ee"><path d="M13 2L4.09 12.97H11L10 22L19.91 11.03H13L13 2Z"/></svg>
+        <span>Charger Stations</span>
+        <span class="sec-count">${maxChargers-freeCount}/${maxChargers} in use</span>
+      </div>
+      <div class="charger-row">${chargerCards}</div>
+    </div>
+
+    <!-- Waiting queue -->
+    <div class="section">
+      <div class="sec-header">
+        <span style="font-size:12px">🕐</span>
+        <span>Waiting Queue</span>
+        <span class="sec-count" style="color:#fbbf24">${queue.length} waiting</span>
+      </div>
+      ${queueCards}
+    </div>
+
+    <div class="footer">Auto-refreshes every ${POLL_MS/1000}s · ${JSONBIN_URL?"Shared across all users":"localStorage only — see setup guide to enable shared sync"} · Resets daily at midnight</div>
+  `;
+}
+
+// ─── Event handlers ───────────────────────────────────────────────────────────
+function showError(msg) {
+  const el=document.getElementById("error-msg");
+  if(!el) return;
+  el.textContent="⚠ "+msg;
+  el.classList.remove("hidden");
+  setTimeout(()=>el.classList.add("hidden"),4000);
+}
+function esc(s){ const d=document.createElement("div");d.textContent=s;return d.innerHTML; }
+
+function toggleAdmin() { adminOpen=!adminOpen; render(); }
+
+function handleAddToQueue() {
+  const inp=document.getElementById("name-input");
+  const name=(inp?.value||"").trim();
+  if(!name){showError("Please enter your name.");return;}
+  const err=addToQueue(name);
+  if(err){showError(err);}
+  else{inp.value="";}
+}
+
+function handleStartSlot(num) {
+  const inp=document.getElementById("name-input");
+  const name=(inp?.value||"").trim();
+  if(!name){showError("Enter your name in the box above first.");return;}
+  const err=startAtSlot(num,name);
+  if(err){showError(err);}
+  else{inp.value="";}
+}
+
+function handleDone(num){ markDone(num); }
+function handleStartQueue(qid){ startFromQueue(qid); }
+function handleRemoveQueue(qid){ removeFromQueue(qid); }
+
+function handleApplyMax() {
+  const n=parseInt(document.getElementById("max-input")?.value);
+  if(!n||n<1||n>20){showError("Enter a number between 1 and 20.");return;}
+  applyMaxChargers(n);
+}
+
+function handleReset(){ if(confirm("Reset today's queue? This clears all chargers and the waiting list."))resetDay(); }
+
+// ─── Date refresh at midnight ─────────────────────────────────────────────────
+function scheduleNextDayReset() {
+  const now=new Date();
+  const midnight=new Date(now);
+  midnight.setHours(24,0,0,0);
+  setTimeout(()=>{ loadState(); scheduleNextDayReset(); }, midnight-now);
+}
+
+// ─── Boot ────────────────────────────────────────────────────────────────────
+loadState().then(()=>{
+  document.getElementById("loading")?.remove();
+  setInterval(loadState, POLL_MS);
+  scheduleNextDayReset();
+});
+</script>
+</body>
+</html>
