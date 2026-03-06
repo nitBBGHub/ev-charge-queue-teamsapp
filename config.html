@@ -1,86 +1,44 @@
-
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>EV Charge Queue - Configure</title>
-<script src="https://unpkg.com/@microsoft/teams-js@1.11.0/dist/MicrosoftTeams.min.js"></script>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: #07101d; color: #e2e8f0;
-    font-family: 'Segoe UI', sans-serif;
-    display: flex; align-items: center; justify-content: center;
-    min-height: 100vh; padding: 24px;
-  }
-  .card {
-    background: #0b1a2e; border: 1px solid #1e3a5f;
-    border-radius: 16px; padding: 32px; max-width: 420px; width: 100%;
-    text-align: center;
-  }
-  .icon {
-    width: 56px; height: 56px; border-radius: 14px;
-    background: linear-gradient(135deg,#22d3ee,#0ea5e9);
-    display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 16px; box-shadow: 0 0 24px #22d3ee44;
-  }
-  h1 { font-size: 20px; font-weight: 700; color: #f1f5f9; margin-bottom: 8px; }
-  p { font-size: 13px; color: #64748b; line-height: 1.6; margin-bottom: 24px; }
-  .feature { display: flex; align-items: center; gap: 10px;
-    background: #091525; border: 1px solid #152a45;
-    border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; text-align: left; }
-  .feature-icon { font-size: 18px; flex-shrink: 0; }
-  .feature-text { font-size: 12px; color: #94a3b8; }
-  .status { margin-top: 20px; font-size: 11px; color: #22d3ee;
-    font-family: monospace; letter-spacing: 1px; }
-</style>
+<title>EV Charge Queue Setup</title>
+<script src="https://unpkg.com/@microsoft/teams-js@2.22.0/dist/MicrosoftTeams.min.js"></script>
 </head>
-<body>
-<div class="card">
-  <div class="icon">
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="#0a0f1e">
-      <path d="M13 2L4.09 12.97H11L10 22L19.91 11.03H13L13 2Z"/>
-    </svg>
+<body style="background:#07101d;color:#e2e8f0;font-family:Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+  <div style="text-align:center;padding:32px">
+    <div style="font-size:48px;margin-bottom:16px">⚡</div>
+    <h2 style="margin-bottom:8px">EV Charge Queue</h2>
+    <p style="color:#64748b" id="msg">Setting up...</p>
   </div>
-  <h1>EV Charge Queue</h1>
-  <p>Click <strong>Save</strong> to add the EV Charging Queue to this chat or channel.</p>
-
-  <div class="feature">
-    <div class="feature-icon">⚡</div>
-    <div class="feature-text">See all charger stations and who's using them in real time</div>
-  </div>
-  <div class="feature">
-    <div class="feature-icon">🕐</div>
-    <div class="feature-text">Join the waiting queue when all chargers are full</div>
-  </div>
-  <div class="feature">
-    <div class="feature-icon">🔄</div>
-    <div class="feature-text">Auto-refreshes every 8 seconds, resets daily at midnight</div>
-  </div>
-
-  <div class="status" id="status">● Initializing...</div>
-</div>
-
 <script>
-  microsoftTeams.initialize(function() {
-    // SDK ready callback - fires only inside Teams iframe
-    microsoftTeams.settings.setValidState(true);
+(function() {
+  var url = "https://nitbbghub.github.io/ev-charge-queue-teamsapp";
 
-    microsoftTeams.settings.registerOnSaveHandler(function(saveEvent) {
-      microsoftTeams.settings.setSettings({
-        suggestedDisplayName: "EV Charge Queue",
-        entityId: "evChargeQueue",
-        contentUrl: "https://nitbbghub.github.io/ev-charge-queue-teamsapp",
-        websiteUrl: "https://nitbbghub.github.io/ev-charge-queue-teamsapp",
-        removeUrl: "https://nitbbghub.github.io/ev-charge-queue-teamsapp/config.html"
+  function ready(msg) {
+    document.getElementById("msg").innerHTML = msg;
+  }
+
+  // Try v2
+  if (microsoftTeams && microsoftTeams.app) {
+    microsoftTeams.app.initialize().then(function() {
+      microsoftTeams.pages.config.setValidState(true);
+      microsoftTeams.pages.config.registerOnSaveHandler(function(evt) {
+        microsoftTeams.pages.config.setConfig({
+          entityId: "evqueue",
+          contentUrl: url,
+          websiteUrl: url,
+          suggestedDisplayName: "EV Charge Queue"
+        }).then(function() { evt.notifySuccess(); });
       });
-      saveEvent.notifySuccess();
+      ready("✅ Ready — click <b>Save</b> above");
+    }).catch(function(e) {
+      ready("Error: " + e);
     });
-
-    document.getElementById("status").textContent = "● Ready — click Save to add tab";
-    document.getElementById("status").style.color = "#4ade80";
-  });
+  } else {
+    ready("Teams SDK not loaded");
+  }
+})();
 </script>
 </body>
 </html>
