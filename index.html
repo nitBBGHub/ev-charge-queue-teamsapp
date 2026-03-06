@@ -8,6 +8,8 @@
 <meta http-equiv="Content-Security-Policy" content="frame-ancestors 'self' https://teams.microsoft.com https://*.teams.microsoft.com https://*.skype.com https://*.office.com https://*.sharepoint.com"/>
 <title>EV Charge Queue</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<!-- Microsoft Teams JS SDK - required for Save button to activate in group chats/channels -->
+<script src="https://res.cdn.office.net/teams-js/2.22.0/js/MicrosoftTeams.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#07101d;color:#e2e8f0;font-family:'DM Sans','Segoe UI',sans-serif;min-height:100vh}
@@ -549,7 +551,35 @@ function scheduleNextDayReset() {
   setTimeout(()=>{ loadState(); scheduleNextDayReset(); }, midnight-now);
 }
 
+// ─── Microsoft Teams Integration ─────────────────────────────────────────────
+// Initializes SDK and enables the Save button when running inside Teams
+// as a configurable tab (group chat / channel)
+async function initTeams() {
+  try {
+    await microsoftTeams.app.initialize();
+    const context = await microsoftTeams.app.getContext();
+
+    // Tell Teams the config page is valid → enables the Save button
+    microsoftTeams.pages.config.setValidState(true);
+
+    // When user clicks Save in Teams, set the tab content URL
+    microsoftTeams.pages.config.registerOnSaveHandler((saveEvent) => {
+      microsoftTeams.pages.config.setConfig({
+        suggestedDisplayName: "EV Charge Queue",
+        entityId: "evChargeQueue",
+        contentUrl: "https://nitbbghub.github.io/ev-charge-queue-teamsapp",
+        websiteUrl: "https://nitbbghub.github.io/ev-charge-queue-teamsapp"
+      });
+      saveEvent.notifySuccess();
+    });
+  } catch(e) {
+    // Not running inside Teams - that's fine, app works standalone too
+    console.log("Not in Teams context:", e.message);
+  }
+}
+
 // ─── Boot ────────────────────────────────────────────────────────────────────
+initTeams(); // Initialize Teams SDK first (enables Save button)
 loadState().then(()=>{
   document.getElementById("loading")?.remove();
   setInterval(loadState, POLL_MS);
