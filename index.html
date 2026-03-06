@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,7 +10,7 @@
 <title>EV Charge Queue</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <!-- Microsoft Teams JS SDK - required for Save button to activate in group chats/channels -->
-<script src="https://statics.teams.cdn.office.net/sdk/v1.6.0/js/MicrosoftTeams.min.js"></script>
+<script src="https://unpkg.com/@microsoft/teams-js@2.22.0/dist/MicrosoftTeams.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#07101d;color:#e2e8f0;font-family:'DM Sans','Segoe UI',sans-serif;min-height:100vh}
@@ -552,34 +553,46 @@ function scheduleNextDayReset() {
 }
 
 // ─── Microsoft Teams Integration ─────────────────────────────────────────────
-// Uses v1 SDK (microsoftTeams.settings) - required for configurable tab Save button
+const CONTENT_URL = "https://nitbbghub.github.io/ev-charge-queue-teamsapp";
+
 function initTeams() {
-  try {
-    // v1 initialize - compatible with all Teams versions
-    microsoftTeams.initialize();
-
-    // CRITICAL: enables the Save button in Teams config dialog
-    microsoftTeams.settings.setValidState(true);
-
-    // Fires when user clicks Save
-    microsoftTeams.settings.registerOnSaveHandler(function(saveEvent) {
-      microsoftTeams.settings.setSettings({
+  // Try v2 API first
+  microsoftTeams.app.initialize().then(function() {
+    // v2 API
+    microsoftTeams.pages.config.setValidState(true);
+    microsoftTeams.pages.config.registerOnSaveHandler(function(saveEvent) {
+      microsoftTeams.pages.config.setConfig({
         suggestedDisplayName: "EV Charge Queue",
         entityId: "evChargeQueue",
-        contentUrl: "https://nitbbghub.github.io/ev-charge-queue-teamsapp",
-        websiteUrl: "https://nitbbghub.github.io/ev-charge-queue-teamsapp",
-        removeUrl: "https://nitbbghub.github.io/ev-charge-queue-teamsapp"
-      });
-      saveEvent.notifySuccess();
+        contentUrl: CONTENT_URL,
+        websiteUrl: CONTENT_URL
+      }).then(function() { saveEvent.notifySuccess(); });
     });
-    console.log("[Teams] SDK ready, Save enabled");
-  } catch(e) {
-    console.log("[Teams] Standalone mode:", e.message);
-  }
+    console.log("[Teams] v2 ready");
+  }).catch(function() {
+    // Fallback v1 API
+    try {
+      microsoftTeams.initialize(function() {
+        microsoftTeams.settings.setValidState(true);
+        microsoftTeams.settings.registerOnSaveHandler(function(saveEvent) {
+          microsoftTeams.settings.setSettings({
+            suggestedDisplayName: "EV Charge Queue",
+            entityId: "evChargeQueue",
+            contentUrl: CONTENT_URL,
+            websiteUrl: CONTENT_URL
+          });
+          saveEvent.notifySuccess();
+        });
+        console.log("[Teams] v1 ready");
+      });
+    } catch(e) {
+      console.log("[Teams] standalone mode");
+    }
+  });
 }
 
 // ─── Boot ────────────────────────────────────────────────────────────────────
-initTeams(); // Must run immediately so Teams receives setValidState signal
+initTeams();
 loadState().then(()=>{
   document.getElementById("loading")?.remove();
   setInterval(loadState, POLL_MS);
