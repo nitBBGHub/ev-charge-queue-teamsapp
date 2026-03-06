@@ -1,10 +1,11 @@
+
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>EV Charge Queue - Configure</title>
-<script src="https://statics.teams.cdn.office.net/sdk/v1.6.0/js/MicrosoftTeams.min.js"></script>
+<script src="https://unpkg.com/@microsoft/teams-js@1.11.0/dist/MicrosoftTeams.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -62,23 +63,24 @@
 </div>
 
 <script>
-  microsoftTeams.initialize();
+  microsoftTeams.initialize(function() {
+    // SDK ready callback - fires only inside Teams iframe
+    microsoftTeams.settings.setValidState(true);
 
-  microsoftTeams.settings.setValidState(true);
-
-  microsoftTeams.settings.registerOnSaveHandler(function(saveEvent) {
-    microsoftTeams.settings.setSettings({
-      suggestedDisplayName: "EV Charge Queue",
-      entityId: "evChargeQueue",
-      contentUrl: "https://nitbbghub.github.io/ev-charge-queue-teamsapp",
-      websiteUrl: "https://nitbbghub.github.io/ev-charge-queue-teamsapp",
-      removeUrl: "https://nitbbghub.github.io/ev-charge-queue-teamsapp/config.html"
+    microsoftTeams.settings.registerOnSaveHandler(function(saveEvent) {
+      microsoftTeams.settings.setSettings({
+        suggestedDisplayName: "EV Charge Queue",
+        entityId: "evChargeQueue",
+        contentUrl: "https://nitbbghub.github.io/ev-charge-queue-teamsapp",
+        websiteUrl: "https://nitbbghub.github.io/ev-charge-queue-teamsapp",
+        removeUrl: "https://nitbbghub.github.io/ev-charge-queue-teamsapp/config.html"
+      });
+      saveEvent.notifySuccess();
     });
-    saveEvent.notifySuccess();
-  });
 
-  document.getElementById("status").textContent = "● Ready — click Save to add tab";
-  document.getElementById("status").style.color = "#4ade80";
+    document.getElementById("status").textContent = "● Ready — click Save to add tab";
+    document.getElementById("status").style.color = "#4ade80";
+  });
 </script>
 </body>
 </html>
