@@ -15,9 +15,8 @@
 <script>
   var url = "https://nitbbghub.github.io/ev-charge-queue-teamsapp";
 
-  microsoftTeams.initialize(function() {
+  function activate() {
     microsoftTeams.settings.setValidState(true);
-
     microsoftTeams.settings.registerOnSaveHandler(function(saveEvent) {
       microsoftTeams.settings.setSettings({
         entityId: "evChargeQueue",
@@ -27,10 +26,20 @@
       });
       saveEvent.notifySuccess();
     });
-
     document.getElementById("msg").textContent = "✅ Ready — click Save above";
     document.getElementById("msg").style.color = "#4ade80";
+  }
+
+  // Call initialize - in newer Teams the callback may not fire
+  // so we also call activate() directly after a short delay
+  microsoftTeams.initialize(function() {
+    activate();
   });
+
+  // Fallback: call directly after 500ms if callback never fires
+  setTimeout(function() {
+    try { activate(); } catch(e) {}
+  }, 500);
 </script>
 </body>
 </html>
