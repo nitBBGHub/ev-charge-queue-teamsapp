@@ -15,31 +15,24 @@
 <script>
   var url = "https://nitbbghub.github.io/ev-charge-queue-teamsapp";
 
-  function activate() {
-    microsoftTeams.settings.setValidState(true);
-    microsoftTeams.settings.registerOnSaveHandler(function(saveEvent) {
-      microsoftTeams.settings.setSettings({
-        entityId: "evChargeQueue",
-        contentUrl: url,
-        websiteUrl: url,
-        suggestedDisplayName: "EV Charge Queue"
-      });
-      saveEvent.notifySuccess();
-    });
-    document.getElementById("msg").textContent = "✅ Ready — click Save above";
-    document.getElementById("msg").style.color = "#4ade80";
-  }
+  // Initialize first - no callback
+  microsoftTeams.initialize();
 
-  // Call initialize - in newer Teams the callback may not fire
-  // so we also call activate() directly after a short delay
-  microsoftTeams.initialize(function() {
-    activate();
+  // Then immediately call setValidState and register handler
+  microsoftTeams.settings.setValidState(true);
+
+  microsoftTeams.settings.registerOnSaveHandler(function(saveEvent) {
+    microsoftTeams.settings.setSettings({
+      entityId: "evChargeQueue",
+      contentUrl: url,
+      websiteUrl: url,
+      suggestedDisplayName: "EV Charge Queue"
+    });
+    saveEvent.notifySuccess();
   });
 
-  // Fallback: call directly after 500ms if callback never fires
-  setTimeout(function() {
-    try { activate(); } catch(e) {}
-  }, 500);
+  document.getElementById("msg").textContent = "✅ Ready — click Save above";
+  document.getElementById("msg").style.color = "#4ade80";
 </script>
 </body>
 </html>
