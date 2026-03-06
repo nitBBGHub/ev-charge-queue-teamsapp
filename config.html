@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <title>EV Charge Queue Setup</title>
-<script src="https://unpkg.com/@microsoft/teams-js@1.11.0/dist/MicrosoftTeams.min.js"></script>
+<script src="https://statics.teams.cdn.office.net/sdk/v1.6.0/js/MicrosoftTeams.min.js"></script>
 </head>
 <body style="background:#07101d;color:#e2e8f0;font-family:Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
   <div style="text-align:center;padding:32px;max-width:400px">
@@ -15,11 +15,10 @@
 <script>
   var url = "https://nitbbghub.github.io/ev-charge-queue-teamsapp";
 
-  // Initialize first - no callback
   microsoftTeams.initialize();
 
-  // Then immediately call setValidState and register handler
-  microsoftTeams.settings.setValidState(true);
+  // Correct function name is setValidityState (not setValidState)
+  microsoftTeams.settings.setValidityState(true);
 
   microsoftTeams.settings.registerOnSaveHandler(function(saveEvent) {
     microsoftTeams.settings.setSettings({
